@@ -40,8 +40,12 @@ namespace SnakeGameML
         private void MoveTimer(object sender, EventArgs e)
         {
             int x = _snake[_front].Location.X, y = _snake[_front].Location.Y;
+            
+            // If still - NOP
             if (_dx == 0 && _dy == 0)
                 return;
+            
+            // If over board - game over
             if(IsOverBoard(x + _dx, y + _dy))
             {
                 timer.Stop();
@@ -49,30 +53,38 @@ namespace SnakeGameML
                 return;
             }
 
-            if(CollisionFood(x + _dx, y + _dy, out int scoreValue))
+            // If Collision
+            if(CollisionFood(x + _dx, y + _dy))
             {
-                _score += scoreValue;
-                labelScore.Text = "Score: " + _score.ToString();
-                if (Hits((y + _dy) / SnakePiece.SideSize, (x + _dx) / SnakePiece.SideSize))
+                // TODO : Can we collide body on food area ?
+                if (HitsBody((y + _dy) / SnakePiece.SidePixelSize, (x + _dx) / SnakePiece.SidePixelSize))
                     return;
-                SnakePiece head = new SnakePiece(x + _dx, y + _dy);
+
+                // Body growing
+                var head = new SnakePiece(x + _dx, y + _dy);
                 _front = (_front - 1 + 1250) % 1250;
                 _snake[_front] = head;
-                _visit[head.Location.Y / SnakePiece.SideSize, head.Location.X / SnakePiece.SideSize] = true;
+                _visit[head.Location.Y / SnakePiece.SidePixelSize, head.Location.X / SnakePiece.SidePixelSize] = true;
                 Controls.Add(head);
+
                 RandomFood();
+
+                // Refresh control
                 this.Invalidate();
             }
+            // No collision
             else
             {
-                if (Hits((y + _dy) / SnakePiece.SideSize, (x + _dx) / SnakePiece.SideSize))
+                if (HitsBody((y + _dy) / SnakePiece.SidePixelSize, (x + _dx) / SnakePiece.SidePixelSize))
                     return;
-                _visit[_snake[_back].Location.Y / SnakePiece.SideSize, _snake[_back].Location.X / SnakePiece.SideSize] = false;
+
+                // Move body
+                _visit[_snake[_back].Location.Y / SnakePiece.SidePixelSize, _snake[_back].Location.X / SnakePiece.SidePixelSize] = false;
                 _front = (_front - 1 + 1250) % 1250;
                 _snake[_front] = _snake[_back];
                 _snake[_front].Location = new Point(x + _dx, y + _dy);
                 _back = (_back - 1 + 1250) % 1250;
-                _visit[(y + _dy) / SnakePiece.SideSize, (x + _dx) / SnakePiece.SideSize] = true;
+                _visit[(y + _dy) / SnakePiece.SidePixelSize, (x + _dx) / SnakePiece.SidePixelSize] = true;
             }
         }
 
@@ -83,16 +95,16 @@ namespace SnakeGameML
             switch (movementChoice)
             {
                 case MovementPath.Right:
-                    _dx = SnakePiece.SideSize;
+                    _dx = SnakePiece.SidePixelSize;
                     break;
                 case MovementPath.Left:
-                    _dx = -SnakePiece.SideSize;
+                    _dx = -SnakePiece.SidePixelSize;
                     break;
                 case MovementPath.Up:
-                    _dy = -SnakePiece.SideSize;
+                    _dy = -SnakePiece.SidePixelSize;
                     break;
                 case MovementPath.Down:
-                    _dy = SnakePiece.SideSize;
+                    _dy = SnakePiece.SidePixelSize;
                     break;
             }
         }
@@ -103,16 +115,16 @@ namespace SnakeGameML
             switch (e.KeyCode)
             {
                 case Keys.Right:
-                    _dx = SnakePiece.SideSize;
+                    _dx = SnakePiece.SidePixelSize;
                     break;
                 case Keys.Left:
-                    _dx = -SnakePiece.SideSize;
+                    _dx = -SnakePiece.SidePixelSize;
                     break;
                 case Keys.Up:
-                    _dy = -SnakePiece.SideSize;
+                    _dy = -SnakePiece.SidePixelSize;
                     break;
                 case Keys.Down:
-                    _dy = SnakePiece.SideSize;
+                    _dy = SnakePiece.SidePixelSize;
                     break;
             }
         }
@@ -140,15 +152,15 @@ namespace SnakeGameML
             if (!_visit[i, j] && !_available.Contains(idx))
                 _available.Add(idx);
             
-            food.foodLabel.Left = (_available.IndexOf(idx) * SnakePiece.SideSize) % Width;
-            food.foodLabel.Top = (_available.IndexOf(idx) * SnakePiece.SideSize) / Width * SnakePiece.SideSize;
+            food.foodLabel.Left = (_available.IndexOf(idx) * SnakePiece.SidePixelSize) % this.Width;
+            food.foodLabel.Top = (_available.IndexOf(idx) * SnakePiece.SidePixelSize) / this.Width * SnakePiece.SidePixelSize;
 
             _foodPieces.Add(food);
 
             return;
         }
 
-        private bool Hits(int x, int y)
+        private bool HitsBody(int x, int y)
         {
             if(_visit[x,y])
             {
@@ -159,9 +171,11 @@ namespace SnakeGameML
             return false;
         }
 
-        private bool CollisionFood(int x, int y, out int scoreValue)
+        private bool CollisionFood(int x, int y)
         {
-            scoreValue = default;
+            int scoreValue;
+
+            // If x and y is food
             if (_foodPieces.Any(f => x == f.foodLabel.Location.X && y == f.foodLabel.Location.Y))
             {
                 var hitFoodPiece = _foodPieces.Where(f => x == f.foodLabel.Location.X && y == f.foodLabel.Location.Y).Select(p => p).FirstOrDefault();
@@ -169,8 +183,10 @@ namespace SnakeGameML
 
                 //Remove food piece as it was hit
                 _foodPieces.Remove(hitFoodPiece);
-                _available.Remove(hitFoodPiece.foodLabel.Location.Y / SnakePiece.SideSize * _columns + hitFoodPiece.foodLabel.Location.X / SnakePiece.SideSize);
+                _available.Remove(hitFoodPiece.foodLabel.Location.Y / SnakePiece.SidePixelSize * _columns + hitFoodPiece.foodLabel.Location.X / SnakePiece.SidePixelSize);
                 Controls.Remove(hitFoodPiece.foodLabel);
+
+                UpdateScore(scoreValue);
                 return true;
             }
             return false;
@@ -184,7 +200,7 @@ namespace SnakeGameML
         private void Initialize()
         {
             _visit = new bool[_rows, _columns];
-            SnakePiece head = new SnakePiece((rand.Next() % _columns) * SnakePiece.SideSize, (rand.Next() % _rows) * SnakePiece.SideSize);
+            var head = new SnakePiece((rand.Next() % _columns) * SnakePiece.SidePixelSize, (rand.Next() % _rows) * SnakePiece.SidePixelSize);
 
             for (int i = 0; i < _rows; i++)
             {
@@ -196,10 +212,18 @@ namespace SnakeGameML
             }
 
             RandomFood();
-            _visit[head.Location.Y / SnakePiece.SideSize, head.Location.X / SnakePiece.SideSize] = true;
-            _available.Remove(head.Location.Y / SnakePiece.SideSize * _columns + head.Location.X / SnakePiece.SideSize);
+            _visit[head.Location.Y / SnakePiece.SidePixelSize, head.Location.X / SnakePiece.SidePixelSize] = true;
+            _available.Remove(head.Location.Y / SnakePiece.SidePixelSize * _columns + head.Location.X / SnakePiece.SidePixelSize);
             Controls.Add(head);
             _snake[_front] = head;
         }
+
+        private void UpdateScore(int value)
+        {
+            _score += value;
+            labelScore.Text = "Score: " + _score.ToString();
+        }
+
+
     }
 }
