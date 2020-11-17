@@ -13,24 +13,19 @@ namespace SnakeGameML
         left = 2
     }
 
-
-    public class SnakeController
+    public interface ISnakeController
     {
-        private int counter;
+        Steering MakeMove();
+    }
+
+
+    public class RandomSnakeController : ISnakeController
+    {
+        private Random _rand = new Random();
 
         public Steering MakeMove()
         {
-            if(counter % 2 == 0)
-            {
-                counter = 0;
-                return Steering.right;
-            }
-            else
-            {
-                counter++;
-                return Steering.stay;
-            }
-            
+            return (Steering)_rand.Next(0, 2);
         }
     }
 }

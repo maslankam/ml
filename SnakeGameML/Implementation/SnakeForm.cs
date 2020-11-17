@@ -10,7 +10,7 @@ namespace SnakeGameML
 {
     public partial class SnakeForm : Form
     {
-        private SnakeController _selfPlayer;
+        private ISnakeController _snakeController;
 
         private int _columns = 50, _rows = 25, _score, _dx, _dy, _front, _back;
         private SnakePiece[] _snake = new SnakePiece[1250];
@@ -33,9 +33,9 @@ namespace SnakeGameML
             LaunchTimer();
         }
 
-        public SnakeForm(SnakeController selfPlayer)
+        public SnakeForm(ISnakeController snakeController)
         {
-            _selfPlayer = selfPlayer;
+            _snakeController = snakeController;
 
             InitializeComponent();
             Initialize();
@@ -52,14 +52,14 @@ namespace SnakeGameML
 
         private void MoveTimer(object sender, EventArgs e)
         {
-            if (_selfPlayer != null)
+            if (_snakeController != null)
             {
                 if (!_started)
                 {
                     SnakeForm_KeyDown(null, new KeyEventArgs(Keys.Right));
                 }
 
-                var steering = _selfPlayer.MakeMove();
+                var steering = _snakeController.MakeMove();
                 if(steering == Steering.right)
                 {
                     SnakeForm_KeyDown(null, new KeyEventArgs(Keys.Right));

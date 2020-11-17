@@ -15,7 +15,7 @@ namespace SnakeGameML
             Application.SetCompatibleTextRenderingDefault(false);
             //Application.Run(new SnakeForm());
 
-            Application.Run(new SnakeForm(new SnakeController()));
+            Application.Run(new SnakeForm(new RandomSnakeController()));
 
         }
     }
