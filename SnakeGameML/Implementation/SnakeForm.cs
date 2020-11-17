@@ -190,10 +190,13 @@ namespace SnakeGameML
 
         private void RandomFood()
         {
+            //TODO: avoid situation when all food is red! 
+
             //do not add if more food than max number
             if (MAX_FOOD_NUMBER < _foodPieces.Count)
                 return;
 
+            //how many food to generate?
             int numberOfFood = rand.Next(1, 4);
             
             for (int e = 0; e < numberOfFood; e++)
@@ -204,18 +207,31 @@ namespace SnakeGameML
 
         private void CreateFood()
         {
-            var food = rand.Next(0, 101) < PROBABILITY_OF_GOOD_FOOD ? (FoodPiece)new GoodFood(this.Controls) : new BadFood(this.Controls);
+            //choose coordinates randomly
             var i = rand.Next(_rows);
             var j = rand.Next(_columns);
             var idx = i * _columns + j;
+
+            //TODO: posibility that all generated food will be snake - dead end
+            //TODO: posibility that map is filled xD
+
+            // If visted 
+            if(_visit[i,j] == true)
+            {
+                return;
+            }
+
+            //choose good or bad food - randomly
+            var food = rand.Next(0, 101) < PROBABILITY_OF_GOOD_FOOD ? (FoodPiece)new GoodFood(this.Controls) : new BadFood(this.Controls);
+
             if (!_visit[i, j] && !_available.Contains(idx))
                 _available.Add(idx);
             
+            //pixels
             food.foodLabel.Left = (_available.IndexOf(idx) * SnakePiece.SidePixelSize) % this.Width;
             food.foodLabel.Top = (_available.IndexOf(idx) * SnakePiece.SidePixelSize) / this.Width * SnakePiece.SidePixelSize;
 
             _foodPieces.Add(food);
-
             return;
         }
 
