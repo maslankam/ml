@@ -10,6 +10,8 @@ namespace SnakeGameML
 {
     public partial class SnakeForm : Form
     {
+        private SnakeController _selfPlayer;
+
         private int _columns = 50, _rows = 25, _score, _dx, _dy, _front, _back;
         private SnakePiece[] _snake = new SnakePiece[1250];
         private List<int> _available = new List<int>();
@@ -24,12 +26,22 @@ namespace SnakeGameML
         private readonly Random rand = new Random();
         private readonly Timer timer = new Timer();
 
-        public  SnakeForm()
+        public SnakeForm()
         {
             InitializeComponent();
             Initialize();
             LaunchTimer();
         }
+
+        public SnakeForm(SnakeController selfPlayer)
+        {
+            _selfPlayer = selfPlayer;
+
+            InitializeComponent();
+            Initialize();
+            LaunchTimer();
+        }
+
 
         private void LaunchTimer()
         {
@@ -40,6 +52,24 @@ namespace SnakeGameML
 
         private void MoveTimer(object sender, EventArgs e)
         {
+            if (_selfPlayer != null)
+            {
+                if (!_started)
+                {
+                    SnakeForm_KeyDown(null, new KeyEventArgs(Keys.Right));
+                }
+
+                var steering = _selfPlayer.MakeMove();
+                if(steering == Steering.right)
+                {
+                    SnakeForm_KeyDown(null, new KeyEventArgs(Keys.Right));
+                }
+                else if(steering == Steering.left)
+                {
+                    SnakeForm_KeyDown(null, new KeyEventArgs(Keys.Left));
+                }
+            }
+
             int x = _snake[_front].Location.X, y = _snake[_front].Location.Y;
             
             // If still - NOP
@@ -90,25 +120,25 @@ namespace SnakeGameML
         }
 
         //TO USE AFTER ML TRANSITION
-        private void SnakeSelfMovement(MovementPath movementChoice, object sender, KeyEventArgs e)
-        {
-            _dx = _dy = 0;
-            switch (movementChoice)
-            {
-                case MovementPath.Right:
-                    _dx = SnakePiece.SidePixelSize;
-                    break;
-                case MovementPath.Left:
-                    _dx = -SnakePiece.SidePixelSize;
-                    break;
-                case MovementPath.Up:
-                    _dy = -SnakePiece.SidePixelSize;
-                    break;
-                case MovementPath.Down:
-                    _dy = SnakePiece.SidePixelSize;
-                    break;
-            }
-        }
+        //private void SnakeSelfMovement(MovementPath movementChoice, object sender, KeyEventArgs e)
+        //{
+        //    _dx = _dy = 0;
+        //    switch (movementChoice)
+        //    {
+        //        case MovementPath.Right:
+        //            _dx = SnakePiece.SidePixelSize;
+        //            break;
+        //        case MovementPath.Left:
+        //            _dx = -SnakePiece.SidePixelSize;
+        //            break;
+        //        case MovementPath.Up:
+        //            _dy = -SnakePiece.SidePixelSize;
+        //            break;
+        //        case MovementPath.Down:
+        //            _dy = SnakePiece.SidePixelSize;
+        //            break;
+        //    }
+        //}
 
         private void SnakeForm_KeyDown(object sender, KeyEventArgs e)
         {

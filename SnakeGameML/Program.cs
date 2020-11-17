@@ -13,7 +13,10 @@ namespace SnakeGameML
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new SnakeForm());
+            //Application.Run(new SnakeForm());
+
+            Application.Run(new SnakeForm(new SnakeController()));
+
         }
     }
 }
