@@ -15,7 +15,8 @@ namespace SnakeGameML
         private List<int> _available = new List<int>();
         private List<FoodPiece> _foodPieces = new List<FoodPiece>();
         private bool[,] _visit;
-        
+        private bool _started;
+
         private const int MAX_FOOD_NUMBER = 5;
         private const int PROBABILITY_OF_GOOD_FOOD = 60;
         private const int TIME_INTERVAL = 100;
@@ -111,20 +112,78 @@ namespace SnakeGameML
 
         private void SnakeForm_KeyDown(object sender, KeyEventArgs e)
         {
-            _dx = _dy = 0;
+            // Initial
+            if (!_started)
+            {
+                //Start up
+                _dy = -SnakePiece.SidePixelSize;
+                _dx = 0;
+                _started = true;
+            }
+
             switch (e.KeyCode)
             {
                 case Keys.Right:
-                    _dx = SnakePiece.SidePixelSize;
+                    // Heading up
+                    if (_dy == -SnakePiece.SidePixelSize)
+                    {
+                        _dx = SnakePiece.SidePixelSize;
+                        _dy = 0;
+                        break;
+                    }
+                    // Heading right
+                    if (_dx == SnakePiece.SidePixelSize)
+                    {
+                        _dx = 0;
+                        _dy = SnakePiece.SidePixelSize;
+                        break;
+                    }
+                    // Heading down
+                    if (_dy == SnakePiece.SidePixelSize)
+                    {
+                        _dx = -SnakePiece.SidePixelSize;
+                        _dy = 0;
+                        break;
+                    }
+                    // Heading left
+                    if (_dx == -SnakePiece.SidePixelSize)
+                    {
+                        _dx = 0;
+                        _dy = -SnakePiece.SidePixelSize;
+                        break;
+                    }
+                    //_dx = SnakePiece.SidePixelSize;
                     break;
                 case Keys.Left:
-                    _dx = -SnakePiece.SidePixelSize;
-                    break;
-                case Keys.Up:
-                    _dy = -SnakePiece.SidePixelSize;
-                    break;
-                case Keys.Down:
-                    _dy = SnakePiece.SidePixelSize;
+                    // Heading up
+                    if (_dy == -SnakePiece.SidePixelSize)
+                    {
+                        _dx = -SnakePiece.SidePixelSize;
+                        _dy = 0;
+                        break;
+                    }
+                    // Heading right
+                    if (_dx == SnakePiece.SidePixelSize)
+                    {
+                        _dx = 0;
+                        _dy = -SnakePiece.SidePixelSize;
+                        break;
+                    }
+                    // Heading down
+                    if (_dy == SnakePiece.SidePixelSize)
+                    {
+                        _dx = SnakePiece.SidePixelSize;
+                        _dy = 0;
+                        break;
+                    }
+                    // Heading left
+                    if (_dx == -SnakePiece.SidePixelSize)
+                    {
+                        _dx = 0;
+                        _dy = SnakePiece.SidePixelSize;
+                        break;
+                    }
+                    //_dx = -SnakePiece.SidePixelSize;
                     break;
             }
         }
@@ -200,7 +259,8 @@ namespace SnakeGameML
         private void Initialize()
         {
             _visit = new bool[_rows, _columns];
-            var head = new SnakePiece((rand.Next() % _columns) * SnakePiece.SidePixelSize, (rand.Next() % _rows) * SnakePiece.SidePixelSize);
+            //Start from middle
+            var head = new SnakePiece((_columns / 2) * SnakePiece.SidePixelSize, (_rows / 2) * SnakePiece.SidePixelSize);
 
             for (int i = 0; i < _rows; i++)
             {
