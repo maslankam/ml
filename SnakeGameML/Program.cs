@@ -1,4 +1,5 @@
 ﻿using System;
+using SnakeGameML.Implementation;
 using System.Windows.Forms;
 
 namespace SnakeGameML
@@ -15,8 +16,9 @@ namespace SnakeGameML
             Application.SetCompatibleTextRenderingDefault(false);
             //Application.Run(new SnakeForm());
 
-            Application.Run(new SnakeForm(new RandomSnakeController()));
+            //Application.Run(new SnakeForm(new RandomSnakeController()));
 
+            Application.Run(new DataCollectionForm());
         }
     }
 }

@@ -6,36 +6,46 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace SnakeGameML
+namespace SnakeGameML.Implementation
 {
     public partial class SnakeForm : Form
     {
         private ISnakeController _snakeController;
+        private TrainingDataCollector _collector;
 
-        private int _columns = 50, _rows = 25, _score, _dx, _dy, _front, _back;
+        private int _score, _dx, _dy, _front, _back;
         private SnakePiece[] _snake = new SnakePiece[1250];
         private List<int> _available = new List<int>();
         private List<FoodPiece> _foodPieces = new List<FoodPiece>();
         private bool[,] _visit;
         private bool _started;
+        private Steering _steering;
 
         private const int MAX_FOOD_NUMBER = 5;
         private const int PROBABILITY_OF_GOOD_FOOD = 60;
-        private const int TIME_INTERVAL = 100;
 
-        private readonly Random rand = new Random();
+        private readonly int _columns = 50, _rows = 25;
+        private readonly int _timeInterval;
+        private readonly Random _rand = new Random();
         private readonly Timer timer = new Timer();
 
         public SnakeForm()
         {
+            _timeInterval = 100;
+            _collector = new TrainingDataCollector(@"C:\Users\mikim\Desktop\danetreningowe.txt"); //TODO: temporary
+
+
+
             InitializeComponent();
             Initialize();
             LaunchTimer();
         }
 
-        public SnakeForm(ISnakeController snakeController)
+        public SnakeForm(ISnakeController snakeController, TrainingDataCollector collector, int timeInterval = 100)
         {
+            _timeInterval = timeInterval;
             _snakeController = snakeController;
+            _collector = collector;
 
             InitializeComponent();
             Initialize();
@@ -45,13 +55,14 @@ namespace SnakeGameML
 
         private void LaunchTimer()
         {
-            timer.Interval = TIME_INTERVAL;
+            timer.Interval = _timeInterval;
             timer.Tick += MoveTimer;
             timer.Start();
         }
 
         private void MoveTimer(object sender, EventArgs e)
         {
+            //automated control
             if (_snakeController != null)
             {
                 if (!_started)
@@ -59,12 +70,12 @@ namespace SnakeGameML
                     SnakeForm_KeyDown(null, new KeyEventArgs(Keys.Right));
                 }
 
-                var steering = _snakeController.MakeMove();
-                if(steering == Steering.right)
+                _steering = _snakeController.MakeMove();
+                if(_steering == Steering.right)
                 {
                     SnakeForm_KeyDown(null, new KeyEventArgs(Keys.Right));
                 }
-                else if(steering == Steering.left)
+                else if(_steering == Steering.left)
                 {
                     SnakeForm_KeyDown(null, new KeyEventArgs(Keys.Left));
                 }
@@ -80,7 +91,17 @@ namespace SnakeGameML
             if(IsOverBoard(x + _dx, y + _dy))
             {
                 timer.Stop();
-                MessageBox.Show("Game over");
+                _collector.SaveRow(new InputRow()
+                {
+                    ObstacleOnFront = 1,
+                    ObstacleOnLeft = 1,
+                    ObstacleOnRight = 1,
+                    SuggestedDirection = 1,
+                    StillAlive = false,
+                });
+                //MessageBox.Show("Game over");
+                this.Close();
+                this.Dispose();
                 return;
             }
 
@@ -116,29 +137,19 @@ namespace SnakeGameML
                 _snake[_front].Location = new Point(x + _dx, y + _dy);
                 _back = (_back - 1 + 1250) % 1250;
                 _visit[(y + _dy) / SnakePiece.SidePixelSize, (x + _dx) / SnakePiece.SidePixelSize] = true;
+
+                _collector.SaveRow(new InputRow()
+                {
+                    ObstacleOnFront = isObstacleOnFront(),
+                    ObstacleOnLeft = 1,
+                    ObstacleOnRight = 1,
+                    SuggestedDirection = 1,
+                    StillAlive = true,
+                });
+
+
             }
         }
-
-        //TO USE AFTER ML TRANSITION
-        //private void SnakeSelfMovement(MovementPath movementChoice, object sender, KeyEventArgs e)
-        //{
-        //    _dx = _dy = 0;
-        //    switch (movementChoice)
-        //    {
-        //        case MovementPath.Right:
-        //            _dx = SnakePiece.SidePixelSize;
-        //            break;
-        //        case MovementPath.Left:
-        //            _dx = -SnakePiece.SidePixelSize;
-        //            break;
-        //        case MovementPath.Up:
-        //            _dy = -SnakePiece.SidePixelSize;
-        //            break;
-        //        case MovementPath.Down:
-        //            _dy = SnakePiece.SidePixelSize;
-        //            break;
-        //    }
-        //}
 
         private void SnakeForm_KeyDown(object sender, KeyEventArgs e)
         {
@@ -227,7 +238,7 @@ namespace SnakeGameML
                 return;
 
             //how many food to generate?
-            int numberOfFood = rand.Next(1, 4);
+            int numberOfFood = _rand.Next(1, 4);
             
             for (int e = 0; e < numberOfFood; e++)
             {
@@ -238,8 +249,8 @@ namespace SnakeGameML
         private void CreateFood()
         {
             //choose coordinates randomly
-            var i = rand.Next(_rows);
-            var j = rand.Next(_columns);
+            var i = _rand.Next(_rows);
+            var j = _rand.Next(_columns);
             var idx = i * _columns + j;
 
             //TODO: posibility that all generated food will be snake - dead end
@@ -252,7 +263,7 @@ namespace SnakeGameML
             }
 
             //choose good or bad food - randomly
-            var food = rand.Next(0, 101) < PROBABILITY_OF_GOOD_FOOD ? (FoodPiece)new GoodFood(this.Controls) : new BadFood(this.Controls);
+            var food = _rand.Next(0, 101) < PROBABILITY_OF_GOOD_FOOD ? (FoodPiece)new GoodFood(this.Controls) : new BadFood(this.Controls);
 
             if (!_visit[i, j] && !_available.Contains(idx))
                 _available.Add(idx);
@@ -270,7 +281,18 @@ namespace SnakeGameML
             if(_visit[x,y])
             {
                 timer.Stop();
-                MessageBox.Show("Snake hit his body");
+                //MessageBox.Show("Snake hit his body");
+
+                _collector.SaveRow(new InputRow()
+                {
+                    ObstacleOnFront = isObstacleOnFront(),
+                    ObstacleOnLeft = isObstacleOnLeft(),
+                    ObstacleOnRight = isObstacleOnRight(),
+                    SuggestedDirection = 1,
+                    StillAlive = true,
+                });
+                this.Close();
+                this.Dispose();
                 return true;
             }
             return false;
@@ -328,6 +350,244 @@ namespace SnakeGameML
         {
             _score += value;
             labelScore.Text = "Score: " + _score.ToString();
+        }
+
+        private double isObstacleOnFront()
+        {
+            var head = _snake[_front];
+            //heading up
+            if (_dy == -SnakePiece.SidePixelSize)
+            {
+                if (head.Location.Y / SnakePiece.SidePixelSize == 0)
+                {
+                    return 1;
+                }
+                else if (_visit[ head.Location.Y/ SnakePiece.SidePixelSize - 1, head.Location.X / SnakePiece.SidePixelSize]) 
+                {
+                    return 1;
+                }
+                else 
+                {
+                    return 0;
+                }
+            }
+            // Heading right
+            else if (_dx == SnakePiece.SidePixelSize)
+            {
+                if (head.Location.X / SnakePiece.SidePixelSize == _columns - 1)
+                {
+                    return 1;
+                }
+                else if (_visit[head.Location.Y / SnakePiece.SidePixelSize, head.Location.X / SnakePiece.SidePixelSize + 1])
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            // Heading down
+            else if (_dy == SnakePiece.SidePixelSize)
+            {
+                if (head.Location.Y / SnakePiece.SidePixelSize == _rows - 1)
+                {
+                    return 1;
+                }
+                else if (_visit[head.Location.Y / SnakePiece.SidePixelSize + 1, head.Location.X / SnakePiece.SidePixelSize])
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            // Heading left
+            else if (_dx == -SnakePiece.SidePixelSize)
+            {
+                if (head.Location.X / SnakePiece.SidePixelSize == 0)
+                {
+                    return 1;
+                }
+                else if (_visit[head.Location.Y / SnakePiece.SidePixelSize, head.Location.X / SnakePiece.SidePixelSize - 1])
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            throw new InvalidOperationException("WTF");
+        }
+
+        private double isObstacleOnRight()
+        {
+            var head = _snake[_front];
+            //heading up
+            if (_dy == -SnakePiece.SidePixelSize)
+            {
+                if (head.Location.X / SnakePiece.SidePixelSize == _columns - 1)
+                {
+                    return 1;
+                }
+                else if (_visit[head.Location.Y / SnakePiece.SidePixelSize, head.Location.X / SnakePiece.SidePixelSize + 1])
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            // Heading right
+            else if (_dx == SnakePiece.SidePixelSize)
+            {
+                if (head.Location.Y / SnakePiece.SidePixelSize == _rows - 1)
+                {
+                    return 1;
+                }
+                else if (_visit[head.Location.Y / SnakePiece.SidePixelSize + 1, head.Location.X / SnakePiece.SidePixelSize])
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            // Heading down
+            else if (_dy == SnakePiece.SidePixelSize)
+            {
+                if (head.Location.X / SnakePiece.SidePixelSize == 0)
+                {
+                    return 1;
+                }
+                else if (_visit[head.Location.Y / SnakePiece.SidePixelSize, head.Location.X / SnakePiece.SidePixelSize - 1])
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            // Heading left
+            else if (_dx == -SnakePiece.SidePixelSize)
+            {
+                if (head.Location.Y / SnakePiece.SidePixelSize == 0)
+                {
+                    return 1;
+                }
+                else if (_visit[head.Location.Y / SnakePiece.SidePixelSize - 1, head.Location.X / SnakePiece.SidePixelSize])
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            throw new InvalidOperationException("WTF");
+        }
+
+        private double isObstacleOnLeft()
+        {
+            var head = _snake[_front];
+            //heading up
+            if (_dy == -SnakePiece.SidePixelSize)
+            {
+                if (head.Location.X / SnakePiece.SidePixelSize == 0)
+                {
+                    return 1;
+                }
+                else if (_visit[head.Location.Y / SnakePiece.SidePixelSize, head.Location.X / SnakePiece.SidePixelSize - 1])
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            // Heading right
+            else if (_dx == SnakePiece.SidePixelSize)
+            {
+                if (head.Location.Y / SnakePiece.SidePixelSize == 0)
+                {
+                    return 1;
+                }
+                else if (_visit[head.Location.Y / SnakePiece.SidePixelSize - 1, head.Location.X / SnakePiece.SidePixelSize])
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            // Heading down
+            else if (_dy == SnakePiece.SidePixelSize)
+            {
+                if (head.Location.X / SnakePiece.SidePixelSize == _columns - 1)
+                {
+                    return 1;
+                }
+                else if (_visit[head.Location.Y / SnakePiece.SidePixelSize, head.Location.X / SnakePiece.SidePixelSize + 1])
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            // Heading left
+            else if (_dx == -SnakePiece.SidePixelSize)
+            {
+                if (head.Location.Y / SnakePiece.SidePixelSize == _rows - 1)
+                {
+                    return 1;
+                }
+                else if (_visit[head.Location.Y / SnakePiece.SidePixelSize + 1, head.Location.X / SnakePiece.SidePixelSize])
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            throw new InvalidOperationException("WTF");
+        }
+
+        private void CommitTrenningData(bool stillAlive)
+        {
+            int suggestedDirection = 0;
+
+            switch (_steering)
+            {
+                case Steering.left: suggestedDirection = -1;
+                    break;
+                case Steering.stay:
+                    suggestedDirection = 0;
+                    break;
+                case Steering.right:
+                    suggestedDirection = 1;
+                    break;
+                default: throw new InvalidOperationException("WTF");
+            }
+
+
+            _collector.SaveRow(new InputRow()
+            {
+                ObstacleOnFront = isObstacleOnFront(),
+                ObstacleOnLeft = isObstacleOnLeft(),
+                ObstacleOnRight = isObstacleOnRight(),
+                SuggestedDirection = suggestedDirection,
+                StillAlive = stillAlive,
+            });
         }
 
 
